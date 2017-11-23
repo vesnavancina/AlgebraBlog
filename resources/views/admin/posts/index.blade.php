@@ -25,7 +25,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach ($posts as $role)
+                        @foreach ($posts as $post)
                             <tr>
                                 <td>
 									<a href="{{ route('admin.posts.show', $post->id) }}">
@@ -50,6 +50,7 @@
 					{{ 'No Posts!' }}
 				@endif
             </div>
+			{!! $posts->render()!!}
         </div>
     </div>
 @stop

@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use Illuminate\Http\Request;
+use App\Http\Requests\PostRequest;
 use App\Http\Controllers\Controller;
 use App\Models\Post;
+use sentinel;
+
 
 class PostController extends Controller
 {
@@ -15,7 +18,7 @@ class PostController extends Controller
    */
     public function __construct()
     {
-        $this->middleware('sentinel.role:administrator');
+        $this->middleware('sentinel.auth');
     }
 	
     /**
@@ -25,7 +28,15 @@ class PostController extends Controller
      */
     public function index()
     {
-        $posts = Post::all();
+        if(Sentinel::inRole('administrator')) {
+			$posts = Post::orderBy('created_at', 'DESC')->
+			paginate(10);
+		} else {
+			$user_id = Sentinel::getUser()->id;
+			$posts = Post::where('user_id',$user_id)->orderBy('created_at', 'DESC')->
+			paginate(10);
+		}
+		
 		
 		return view('admin.posts.index',['posts'=>$posts]);
     }
@@ -43,13 +54,26 @@ class PostController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Http\Requests\PostRequest  $request
      * @return \Illuminate\Http\Response
      */
-    public function store(Request $request)
+    public function store(PostRequest $request)
     {
+		$user_id = Sentinel::getUser()->id;
         $input = $request->except(['_token']);
-		dd($input);
+		
+		$data = array(
+		'user_id' 	=> $user_id,
+		'title'		=> trim($input['title']),
+		'content'	=> $input['content']
+		);
+		
+		$post = new Post();
+		$post->savePost($data);
+		
+		$message = session()->flash('success','You have successfully add a new post.');
+		
+		return redirect()->route('admin.posts.index')->withFlashMessage($message);
     }
 
     /**
@@ -60,7 +84,9 @@ class PostController extends Controller
      */
     public function show($id)
     {
-        //
+        $post = Post::find($id);
+		
+		return view('admin.posts.show', ['post' => $post]);
     }
 
     /**
@@ -71,7 +97,8 @@ class PostController extends Controller
      */
     public function edit($id)
     {
-        //
+		$post = Post::find($id);
+        return view('admin.posts.edit');
     }
 
     /**
@@ -94,6 +121,11 @@ class PostController extends Controller
      */
     public function destroy($id)
     {
-        //
+        $post = Post::find($id);
+		$post->delete();
+		
+		$message = session()->flash('success','You have successfully delete a new post.');
+		
+		return redirect()->route('admin.posts.index')->withFlashMessage($message);
     }
 }
